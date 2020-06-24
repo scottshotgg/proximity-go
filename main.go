@@ -45,7 +45,7 @@ const (
 	nodeAddr    = ":5001"
 	route       = "test_topic_"
 	everySecond = 1 * time.Second
-	size        = 6
+	size        = 50
 	sep         = "========================"
 )
 
@@ -181,7 +181,7 @@ func senders() {
 					Contents: contents,
 				}
 
-				// time.Sleep(200 * time.Millisecond)
+				time.Sleep(200 * time.Millisecond)
 
 				sendcounters[i].Incr(1)
 			}
