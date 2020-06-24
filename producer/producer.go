@@ -1,8 +1,10 @@
 package producer
 
+import "github.com/scottshotgg/proximity/pkg/listener"
+
 type (
 	Producer interface {
-		Single(route string, contents []byte) error
-		Stream(route string, ch <-chan []byte)
+		Single(msg *listener.Msg) error
+		Stream(ch <-chan *listener.Msg)
 	}
 )

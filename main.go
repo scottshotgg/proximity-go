@@ -9,6 +9,7 @@ import (
 	"github.com/paulbellamy/ratecounter"
 	grpc_consumer "github.com/scottshotgg/proximity-go/consumer/grpc"
 	grpc_producer "github.com/scottshotgg/proximity-go/producer/grpc"
+	"github.com/scottshotgg/proximity/pkg/listener"
 )
 
 // func main() {
@@ -42,13 +43,15 @@ import (
 // }
 const (
 	nodeAddr    = ":5001"
-	route       = "a"
+	route       = "test_topic_"
 	everySecond = 1 * time.Second
 	size        = 6
 	sep         = "========================"
 )
 
 var (
+	ids = make([]string, size)
+
 	timer        = time.NewTimer(everySecond)
 	sendcounters = make([]*ratecounter.RateCounter, size)
 	recvcounters = make([]*ratecounter.RateCounter, size)
@@ -104,8 +107,8 @@ func main() {
 		}
 	}()
 
-	senders()
 	recvers()
+	senders()
 
 	time.Sleep(1000 * time.Second)
 }
@@ -117,12 +120,14 @@ func recvers() {
 			// time.Sleep(15 * time.Second)
 
 			var (
-				cons, err = grpc_consumer.New(nodeAddr, "id_"+strconv.Itoa(i), route+strconv.Itoa(i))
+				cons, err = grpc_consumer.New(nodeAddr, route+strconv.Itoa(i))
 			)
 
 			if err != nil {
 				log.Fatalln("err grpc.New:", err)
 			}
+
+			ids[i] = cons.ID()
 
 			var ch = make(chan []byte, 1000)
 
@@ -153,9 +158,9 @@ func senders() {
 				log.Fatalln("err grpc.New:", err)
 			}
 
-			var ch = make(chan []byte, 100000)
+			var ch = make(chan *listener.Msg, 100000)
 
-			prod.Stream(route+strconv.Itoa(i), ch)
+			prod.Stream(ch)
 
 			// var timer = time.After(5 * time.Second)
 
@@ -167,7 +172,16 @@ func senders() {
 				// default:
 				// }
 
-				ch <- contents
+				if ids[i] == "" {
+					continue
+				}
+
+				ch <- &listener.Msg{
+					Route:    "_id/" + ids[i],
+					Contents: contents,
+				}
+
+				// time.Sleep(200 * time.Millisecond)
 
 				sendcounters[i].Incr(1)
 			}

@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 
 	"github.com/scottshotgg/proximity-go/consumer"
@@ -26,25 +28,40 @@ type (
 	}
 )
 
-func New(addr, id, route string) (consumer.Consumer, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), defaultOps)
+func New(addr, route string) (consumer.Consumer, error) {
+	var conn, err = grpc.Dial(addr, grpc.WithInsecure(), defaultOps)
 	if err != nil {
 		return nil, err
 	}
 
-	var client = buffs.NewNodeClient(conn)
-
-	sub, err := client.Subscribe(context.Background(), &buffs.SubscribeReq{
-		Id:    id,
+	sub, err := buffs.NewNodeClient(conn).Subscribe(context.Background(), &buffs.SubscribeReq{
 		Route: route,
 	})
+
 	if err != nil {
 		return nil, err
+	}
+
+	md, err := sub.Header()
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("header:", md)
+
+	var idArray = md.Get("id")
+	if len(idArray) != 1 {
+		return nil, errors.New("something was wrong with the ID header")
 	}
 
 	return &grpcConsumer{
+		id:     idArray[0],
 		stream: sub,
 	}, nil
+}
+
+func (g *grpcConsumer) ID() string {
+	return g.id
 }
 
 func (g *grpcConsumer) Single() ([]byte, error) {

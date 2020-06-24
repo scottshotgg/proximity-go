@@ -6,6 +6,7 @@ import (
 
 	"github.com/scottshotgg/proximity-go/producer"
 	"github.com/scottshotgg/proximity/pkg/buffs"
+	"github.com/scottshotgg/proximity/pkg/listener"
 	"google.golang.org/grpc"
 )
 
@@ -42,22 +43,22 @@ func New(addr string) (producer.Producer, error) {
 	}, nil
 }
 
-func (g *grpcProducer) Single(route string, contents []byte) error {
+func (g *grpcProducer) Single(msg *listener.Msg) error {
 	return g.stream.Send(&buffs.PublishReq{
-		Route:    route,
-		Contents: contents,
+		Route:    msg.Route,
+		Contents: msg.Contents,
 	})
 }
 
-func (g *grpcProducer) Stream(route string, ch <-chan []byte) {
+func (g *grpcProducer) Stream(ch <-chan *listener.Msg) {
 	go func() {
 		for {
 			select {
 			case msg := <-ch:
 				// TODO: check error here later probably
 				g.stream.Send(&buffs.PublishReq{
-					Route:    route,
-					Contents: msg,
+					Route:    msg.Route,
+					Contents: msg.Contents,
 				})
 			}
 		}
