@@ -44,13 +44,12 @@ const (
 	nodeAddr    = ":5001"
 	route       = "a"
 	everySecond = 1 * time.Second
-	size        = 1
+	size        = 6
+	sep         = "========================"
 )
 
 var (
 	timer        = time.NewTimer(everySecond)
-	sendcounter  = ratecounter.NewRateCounter(everySecond)
-	recvcounter  = ratecounter.NewRateCounter(everySecond)
 	sendcounters = make([]*ratecounter.RateCounter, size)
 	recvcounters = make([]*ratecounter.RateCounter, size)
 )
@@ -60,16 +59,44 @@ func main() {
 		for {
 			select {
 			case <-timer.C:
-				fmt.Printf("Totals:\nSender: %d\nRecver: %d\n", sendcounter.Rate(), recvcounter.Rate())
+				var (
+					sendRate int64
+					recvRate int64
 
-				for i, counter := range sendcounters {
-					fmt.Printf("Sender %d: %d\n", i, counter.Rate())
+					sendRates = make([]int64, size)
+					recvRates = make([]int64, size)
+				)
+
+				for i := 0; i < size; i++ {
+					sendRates[i] = sendcounters[i].Rate()
+
+					sendRate += sendRates[i]
 				}
 
-				for i, counter := range recvcounters {
-					fmt.Printf("Recver %d: %d\n", i, counter.Rate())
+				for i := 0; i < size; i++ {
+					recvRates[i] = recvcounters[i].Rate()
+
+					recvRate += recvRates[i]
 				}
 
+				fmt.Println("Totals:")
+				fmt.Println(sep)
+
+				fmt.Printf("\tSender: %d\n", sendRate)
+
+				for i, j := range sendRates {
+					fmt.Printf("\t%6d: %d\n", i, j)
+				}
+
+				fmt.Println(sep)
+
+				fmt.Printf("\tRecver: %d\n", recvRate)
+
+				for i, j := range recvRates {
+					fmt.Printf("\t%6d: %d\n", i, j)
+				}
+
+				fmt.Println(sep)
 				fmt.Println()
 
 				timer.Reset(everySecond)
@@ -87,7 +114,7 @@ func recvers() {
 	for i := 0; i < size; i++ {
 		go func(i int) {
 			recvcounters[i] = ratecounter.NewRateCounter(everySecond)
-			time.Sleep(15 * time.Second)
+			// time.Sleep(15 * time.Second)
 
 			var (
 				cons, err = grpc_consumer.New(nodeAddr, "id_"+strconv.Itoa(i), route+strconv.Itoa(i))
@@ -105,7 +132,6 @@ func recvers() {
 				<-ch
 
 				recvcounters[i].Incr(1)
-				recvcounter.Incr(1)
 			}
 		}(i)
 	}
@@ -115,6 +141,7 @@ func senders() {
 	for i := 0; i < size; i++ {
 		go func(i int) {
 			sendcounters[i] = ratecounter.NewRateCounter(everySecond)
+			// time.Sleep(2 * time.Second)
 
 			var (
 				contents []byte
@@ -130,20 +157,19 @@ func senders() {
 
 			prod.Stream(route+strconv.Itoa(i), ch)
 
-			var timer = time.After(5 * time.Second)
+			// var timer = time.After(5 * time.Second)
 
 			for {
-				select {
-				case <-timer:
-					return
+				// select {
+				// case <-timer:
+				// 	return
 
-				default:
-				}
+				// default:
+				// }
 
 				ch <- contents
 
 				sendcounters[i].Incr(1)
-				sendcounter.Incr(1)
 			}
 		}(i)
 	}
