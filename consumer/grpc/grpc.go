@@ -28,14 +28,14 @@ type (
 	}
 )
 
-func New(addr, route string) (consumer.Consumer, error) {
+func New(addr string, topics []string) (consumer.Consumer, error) {
 	var conn, err = grpc.Dial(addr, grpc.WithInsecure(), defaultOps)
 	if err != nil {
 		return nil, err
 	}
 
 	sub, err := buffs.NewNodeClient(conn).Subscribe(context.Background(), &buffs.SubscribeReq{
-		Route: route,
+		Topics: topics,
 	})
 
 	if err != nil {
@@ -64,13 +64,13 @@ func (g *grpcConsumer) ID() string {
 	return g.id
 }
 
-func (g *grpcConsumer) Single() ([]byte, error) {
+func (g *grpcConsumer) Recv() ([]byte, error) {
 	var res, err = g.stream.Recv()
 
 	return res.GetMessage().GetContents(), err
 }
 
-func (g *grpcConsumer) Stream(ch chan<- []byte) {
+func (g *grpcConsumer) Listen(ch chan<- []byte) {
 	go func() {
 		for {
 			var res, err = g.stream.Recv()

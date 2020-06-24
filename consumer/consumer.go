@@ -4,7 +4,7 @@ type (
 	Consumer interface {
 		ID() string
 
-		Single() ([]byte, error)
-		Stream(ch chan<- []byte)
+		Recv() ([]byte, error)
+		Listen(ch chan<- []byte)
 	}
 )

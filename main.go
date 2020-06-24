@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/paulbellamy/ratecounter"
 	grpc_consumer "github.com/scottshotgg/proximity-go/consumer/grpc"
 	grpc_producer "github.com/scottshotgg/proximity-go/producer/grpc"
 	"github.com/scottshotgg/proximity/pkg/listener"
+	channel_recv "github.com/scottshotgg/proximity/pkg/recv/channel"
 )
 
 // func main() {
@@ -43,9 +43,9 @@ import (
 // }
 const (
 	nodeAddr    = ":5001"
-	route       = "test_topic_"
+	route       = channel_recv.RouteNoOp
 	everySecond = 1 * time.Second
-	size        = 50
+	size        = 10
 	sep         = "========================"
 )
 
@@ -120,7 +120,7 @@ func recvers() {
 			// time.Sleep(15 * time.Second)
 
 			var (
-				cons, err = grpc_consumer.New(nodeAddr, route+strconv.Itoa(i))
+				cons, err = grpc_consumer.New(nodeAddr, []string{route})
 			)
 
 			if err != nil {
@@ -131,7 +131,7 @@ func recvers() {
 
 			var ch = make(chan []byte, 1000)
 
-			cons.Stream(ch)
+			cons.Listen(ch)
 
 			for {
 				<-ch
@@ -177,11 +177,11 @@ func senders() {
 				}
 
 				ch <- &listener.Msg{
-					Route:    "_id/" + ids[i],
+					Route:    channel_recv.RouteID + "/" + ids[i],
 					Contents: contents,
 				}
 
-				time.Sleep(200 * time.Millisecond)
+				// time.Sleep(20 * time.Millisecond)
 
 				sendcounters[i].Incr(1)
 			}

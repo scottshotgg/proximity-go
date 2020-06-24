@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"log"
 
 	"github.com/scottshotgg/proximity-go/producer"
 	"github.com/scottshotgg/proximity/pkg/buffs"
@@ -31,11 +30,9 @@ func New(addr string) (producer.Producer, error) {
 		return nil, err
 	}
 
-	var client = buffs.NewNodeClient(conn)
-
-	pub, err := client.Publish(context.Background())
+	pub, err := buffs.NewNodeClient(conn).Publish(context.Background())
 	if err != nil {
-		log.Fatalln("err", err)
+		return nil, err
 	}
 
 	return &grpcProducer{
@@ -43,9 +40,9 @@ func New(addr string) (producer.Producer, error) {
 	}, nil
 }
 
-func (g *grpcProducer) Single(msg *listener.Msg) error {
+func (g *grpcProducer) Send(msg *listener.Msg) error {
 	return g.stream.Send(&buffs.PublishReq{
-		Route:    msg.Route,
+		Routes:   []string{msg.Route},
 		Contents: msg.Contents,
 	})
 }
@@ -57,7 +54,7 @@ func (g *grpcProducer) Stream(ch <-chan *listener.Msg) {
 			case msg := <-ch:
 				// TODO: check error here later probably
 				g.stream.Send(&buffs.PublishReq{
-					Route:    msg.Route,
+					Routes:   []string{msg.Route},
 					Contents: msg.Contents,
 				})
 			}
