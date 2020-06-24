@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/paulbellamy/ratecounter"
+	"github.com/pkg/profile"
 	grpc_consumer "github.com/scottshotgg/proximity-go/consumer/grpc"
 	grpc_producer "github.com/scottshotgg/proximity-go/producer/grpc"
 	"github.com/scottshotgg/proximity/pkg/listener"
@@ -41,9 +42,12 @@ import (
 
 // 	time.Sleep(10 * time.Second)
 // }
+
 const (
-	nodeAddr    = ":5001"
-	route       = channel_recv.RouteNoOp
+	// nodeAddr = "192.168.1.227:5001"
+	nodeAddr = ":5001"
+	route    = channel_recv.RouteNoOp
+	// route       = "a"
 	everySecond = 1 * time.Second
 	size        = 10
 	sep         = "========================"
@@ -58,6 +62,8 @@ var (
 )
 
 func main() {
+	defer profile.Start(profile.MemProfile, profile.ProfilePath("profile.p")).Stop()
+
 	go func() {
 		for {
 			select {
@@ -99,7 +105,7 @@ func main() {
 					fmt.Printf("\t%6d: %d\n", i, j)
 				}
 
-				fmt.Println(sep)
+				// fmt.Println(sep)
 				fmt.Println()
 
 				timer.Reset(everySecond)
@@ -110,7 +116,7 @@ func main() {
 	recvers()
 	senders()
 
-	time.Sleep(1000 * time.Second)
+	time.Sleep(10 * time.Second)
 }
 
 func recvers() {
@@ -119,10 +125,8 @@ func recvers() {
 			recvcounters[i] = ratecounter.NewRateCounter(everySecond)
 			// time.Sleep(15 * time.Second)
 
-			var (
-				cons, err = grpc_consumer.New(nodeAddr, []string{route})
-			)
-
+			// var cons, err = grpc_consumer.New(nodeAddr, []string{route + strconv.Itoa(i)})
+			var cons, err = grpc_consumer.New(nodeAddr, []string{route})
 			if err != nil {
 				log.Fatalln("err grpc.New:", err)
 			}
@@ -158,7 +162,7 @@ func senders() {
 				log.Fatalln("err grpc.New:", err)
 			}
 
-			var ch = make(chan *listener.Msg, 100000)
+			var ch = make(chan *listener.Msg, 1000)
 
 			prod.Stream(ch)
 
@@ -177,7 +181,9 @@ func senders() {
 				}
 
 				ch <- &listener.Msg{
-					Route:    channel_recv.RouteID + "/" + ids[i],
+					Route: channel_recv.RouteID + "/" + ids[i],
+					// Route: route + strconv.Itoa(i),
+					// Route:    route,
 					Contents: contents,
 				}
 
